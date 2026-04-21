@@ -1,6 +1,7 @@
 /* ============================================
-   HandWrite AI v2.1 — Warm, Paper-like Design
+   HandWrite AI v2.2 — Warm, Paper-like Design
    Real SVG stroke rendering
+   Fixed: white screen bug, reliable welcome animation
    ============================================ */
 
 *, *::before, *::after {
@@ -77,47 +78,31 @@ body {
   width: 190px;
 }
 
-/* Stroke drawing animation for welcome paths */
+/* Safety: auto-hide overlay if JS fails to dismiss it */
+#welcome-overlay {
+  animation: autoHideOverlay 4s forwards;
+}
+
+@keyframes autoHideOverlay {
+  0%, 80% { opacity: 1; }
+  100% { opacity: 0; pointer-events: none; }
+}
+
+/* When JS successfully handles welcome, cancel the CSS auto-hide */
+#welcome-overlay.handled {
+  animation: none;
+}
+
+/* Stroke drawing animation for welcome paths — works for any nested .stroke-path */
 #welcome-svg .stroke-path {
-  fill: none;
-  stroke: var(--ink);
+  fill: none !important;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: var(--path-len, 800);
-  stroke-dashoffset: var(--path-len, 800);
-  animation: drawStroke 1.6s ease forwards;
 }
 
-#welcome-svg .stroke-thin {
-  stroke: var(--ink);
-  opacity: 0.3;
-}
-
-#welcome-svg .stroke-medium {
-  stroke: var(--ink);
-  opacity: 0.5;
-}
-
-#welcome-svg .stroke-main {
-  stroke: var(--ink);
-  opacity: 0.85;
-}
-
-/* Staggered animation delays per letter group */
-#welcome-svg .stroke-path:nth-child(1) { animation-delay: 0s; }
-#welcome-svg .stroke-path:nth-child(2) { animation-delay: 0.08s; }
-#welcome-svg .stroke-path:nth-child(3) { animation-delay: 0.16s; }
-#welcome-svg .stroke-path:nth-child(4) { animation-delay: 0.24s; }
-#welcome-svg .stroke-path:nth-child(5) { animation-delay: 0.32s; }
-#welcome-svg .stroke-path:nth-child(6) { animation-delay: 0.40s; }
-#welcome-svg .stroke-path:nth-child(7) { animation-delay: 0.48s; }
-#welcome-svg .stroke-path:nth-child(8) { animation-delay: 0.56s; }
-#welcome-svg .stroke-path:nth-child(9) { animation-delay: 0.64s; }
-#welcome-svg .stroke-path:nth-child(10) { animation-delay: 0.72s; }
-#welcome-svg .stroke-path:nth-child(11) { animation-delay: 0.80s; }
-#welcome-svg .stroke-path:nth-child(12) { animation-delay: 0.88s; }
-#welcome-svg .stroke-path:nth-child(13) { animation-delay: 0.96s; }
-#welcome-svg .stroke-path:nth-child(14) { animation-delay: 1.04s; }
+/* JS sets inline styles for stroke-dasharray, stroke-dashoffset, and animation.
+   Inline styles win over class styles, so CSS only needs to ensure fill:none.
+   Stroke color is set explicitly on each path element via attributes. */
 
 @keyframes drawStroke {
   to {

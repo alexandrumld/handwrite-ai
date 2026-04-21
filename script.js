@@ -1,6 +1,7 @@
 /* ============================================
-   HandWrite AI v2.1 — Real SVG Stroke Rendering
+   HandWrite AI v2.2 — Real SVG Stroke Rendering
    Uses opentype.js for glyph path extraction
+   Fixed: white screen bug, reliable welcome animation
    ============================================ */
 
 (function() {
@@ -292,12 +293,30 @@
     return el;
   }
 
-  function getPathLength(pathData) {
-    // Estimate path length by creating a temp path element
-    const temp = svgEl('path', { d: pathData });
-    // We'll just use a reasonable estimate based on path complexity
-    // The actual length will be computed when appended to DOM
+  function estimatePathLength(pathData) {
+    // Rough estimate — we'll fix this with getTotalLength() after DOM append
     return Math.max(pathData.length * 1.5, 200);
+  }
+
+  // After a path is in the DOM, get its true length and fix dasharray/offset
+  function fixPathLength(pathEl) {
+    try {
+      const len = pathEl.getTotalLength();
+      if (len && len > 0) {
+        pathEl.style.strokeDasharray = len;
+        pathEl.style.strokeDashoffset = len;
+        // Re-trigger animation by re-setting it
+        const currentAnim = pathEl.style.animation;
+        if (currentAnim) {
+          pathEl.style.animation = 'none';
+          // Force reflow
+          void pathEl.offsetWidth;
+          pathEl.style.animation = currentAnim;
+        }
+      }
+    } catch (e) {
+      // getTotalLength not supported or path invalid — keep estimate
+    }
   }
 
   // ── Variable Stroke Width Rendering ──────────
@@ -306,7 +325,7 @@
   function renderStrokePath(parentSvg, pathData, attrs, animate, delay) {
     const weight = attrs.weight || 2;
     const ink = attrs.ink || '#1A1A1A';
-    const pathLen = getPathLength(pathData);
+    const pathLen = estimatePathLength(pathData);
 
     // Layer 1: Thinnest background stroke (subtle spread)
     const thin = svgEl('path', {
@@ -352,13 +371,14 @@
       opacity: '0.9'
     });
 
+    const paths = [thin, medium, main, highlight];
+
     if (animate) {
-      [thin, medium, main, highlight].forEach((p, i) => {
-        p.style.setProperty('--path-len', pathLen);
+      paths.forEach((p, i) => {
+        p.classList.add('stroke-path');
         p.style.strokeDasharray = pathLen;
         p.style.strokeDashoffset = pathLen;
         p.style.animation = `drawStroke 1.4s ease ${delay + i * 0.02}s forwards`;
-        p.classList.add('stroke-path');
       });
     }
 
@@ -367,7 +387,15 @@
     parentSvg.appendChild(main);
     parentSvg.appendChild(highlight);
 
-    return [thin, medium, main, highlight];
+    // Fix dasharray/offset with actual path length after DOM insertion
+    if (animate) {
+      // Use requestAnimationFrame to ensure paths are rendered
+      requestAnimationFrame(() => {
+        paths.forEach(p => fixPathLength(p));
+      });
+    }
+
+    return paths;
   }
 
   // ── Welcome Animation ───────────────────────
@@ -380,12 +408,16 @@
     const welcomeSvg = document.getElementById('welcome-svg');
     const headerSvg = document.getElementById('header-svg');
 
+    // Mark overlay as JS-handled so CSS auto-hide doesn't double-fire
+    const overlay = document.getElementById('welcome-overlay');
+    if (overlay) overlay.classList.add('handled');
+
     // Clear any existing content
     welcomeSvg.innerHTML = '';
     headerSvg.innerHTML = '';
 
     if (langEntry.lang === 'ja') {
-      // Japanese: use styled text approach since we can't hand-draw kanana
+      // Japanese: use styled text approach since we can't hand-draw kana
       renderJapaneseWelcome(welcomeSvg, langEntry.text, attrs);
       renderJapaneseWelcome(headerSvg, langEntry.text, attrs, true);
     } else {
@@ -416,8 +448,7 @@
     }
 
     // After animation completes, move to header
-    setTimeout(() => {
-      const overlay = document.getElementById('welcome-overlay');
+    const animDone = () => {
       const svg = document.getElementById('welcome-svg');
       const header = document.getElementById('signature-header');
       const app = document.getElementById('app');
@@ -429,14 +460,24 @@
         header.classList.add('visible');
         app.classList.add('visible');
 
+        // Mark welcome as done so safety timeout knows
+        window._welcomeDone = true;
+
         setTimeout(() => {
           overlay.style.display = 'none';
         }, 600);
       }, 500);
-    }, 1800);
+    };
+
+    // Wait for drawStroke animations to finish before transitioning
+    // Longest animation: last letter starts at (paths.length-1)*0.12 + 3*0.02 and runs 1.4s
+    // Total = (paths.length-1)*0.12 + 0.06 + 1.4
+    const letterCount = (langEntry.lang === 'ja') ? 1 : getWelcomePaths(langEntry.text, styleName).length;
+    const totalAnimMs = ((letterCount - 1) * 120 + 60 + 1400) + 200; // +200ms buffer
+    setTimeout(animDone, Math.max(totalAnimMs, 1500));
   }
 
-  function renderJapaneseWelcome(svgEl, text, attrs, isHeader) {
+  function renderJapaneseWelcome(svgContainer, text, attrs, isHeader) {
     // For Japanese, use a text element with a nice font since we can't hand-draw it
     const textEl = svgEl('text', {
       x: '50%',
@@ -452,17 +493,17 @@
     textEl.textContent = text;
 
     if (!isHeader) {
-      // Add stroke animation even for text
-      textEl.style.stroke = attrs.ink;
+      // Add stroke drawing animation for text
+      textEl.style.stroke = attrs.ink || '#1A1A1A';
       textEl.style.strokeWidth = '1';
+      textEl.style.fill = 'none';
       textEl.style.strokeDasharray = '2000';
       textEl.style.strokeDashoffset = '2000';
       textEl.style.animation = 'drawStroke 1.5s ease forwards';
       textEl.classList.add('stroke-path');
-      textEl.style.setProperty('--path-len', '2000');
     }
 
-    svgEl.appendChild(textEl);
+    svgContainer.appendChild(textEl);
   }
 
   function getWelcomePaths(text, styleName) {
@@ -526,15 +567,20 @@
   }
 
   // ── Glyph-based Text Rendering (opentype.js) ──
-  function renderGlyphText(svgEl, text, styleName, thickness, neatness, animate) {
+  function renderGlyphText(svgContainer, text, styleName, thickness, neatness, animate) {
     const attrs = STYLE_ATTRS[styleName];
     const fontSize = 32;
     const color = attrs.ink || '#1A1A1A';
     const baseWeight = thickness * attrs.weight * 0.5;
 
     if (!loadedFont || !loadedFont.regular) {
-      // Fallback: render using canvas-measured text as paths
-      renderFallbackText(svgEl, text, styleName, thickness, neatness, animate);
+      // Wait for Google Fonts to be ready, then render fallback
+      const render = () => renderFallbackText(svgContainer, text, styleName, thickness, neatness, animate);
+      if (typeof document.fonts !== 'undefined') {
+        document.fonts.ready.then(render);
+      } else {
+        render();
+      }
       return;
     }
 
@@ -602,11 +648,11 @@
       x += fontSize * 0.4 * attrs.spacing;
     });
 
-    svgEl.appendChild(mainGroup);
+    svgContainer.appendChild(mainGroup);
 
     // Update viewBox
     const totalHeight = y + fontSize + 20;
-    svgEl.setAttribute('viewBox', `0 0 600 ${Math.max(200, totalHeight)}`);
+    svgContainer.setAttribute('viewBox', `0 0 600 ${Math.max(200, totalHeight)}`);
   }
 
   function renderVariableStrokePath(parent, pathD, weight, color, attrs, animate, delay) {
@@ -656,14 +702,15 @@
       opacity: '0.92'
     });
 
+    const paths = [bg, spread, main, fine];
+
     if (animate) {
-      const pathLen = Math.max(pathD.length * 1.2, 100);
-      [bg, spread, main, fine].forEach((p, i) => {
-        p.style.setProperty('--path-len', pathLen);
-        p.style.strokeDasharray = pathLen;
-        p.style.strokeDashoffset = pathLen;
-        p.style.animation = `previewDraw ${0.3 + Math.random() * 0.2}s ease ${delay + i * 0.01}s forwards`;
+      const estLen = Math.max(pathD.length * 1.2, 100);
+      paths.forEach((p, i) => {
         p.classList.add('draw-path');
+        p.style.strokeDasharray = estLen;
+        p.style.strokeDashoffset = estLen;
+        p.style.animation = `previewDraw ${0.3 + Math.random() * 0.2}s ease ${delay + i * 0.01}s forwards`;
       });
     }
 
@@ -671,10 +718,29 @@
     parent.appendChild(spread);
     parent.appendChild(main);
     parent.appendChild(fine);
+
+    // Fix dasharray/offset with actual path length after DOM insertion
+    if (animate) {
+      requestAnimationFrame(() => {
+        paths.forEach(p => {
+          try {
+            const len = p.getTotalLength();
+            if (len && len > 0) {
+              const currentAnim = p.style.animation;
+              p.style.strokeDasharray = len;
+              p.style.strokeDashoffset = len;
+              p.style.animation = 'none';
+              void p.offsetWidth;
+              p.style.animation = currentAnim;
+            }
+          } catch(e) {}
+        });
+      });
+    }
   }
 
   // ── Fallback Rendering (when opentype.js fails) ──
-  function renderFallbackText(svgEl, text, styleName, thickness, neatness, animate) {
+  function renderFallbackText(svgContainer, text, styleName, thickness, neatness, animate) {
     const attrs = STYLE_ATTRS[styleName];
     const fontSize = 28;
     const color = attrs.ink || '#1A1A1A';
@@ -774,11 +840,11 @@
       x += fontSize * 0.4 * attrs.spacing;
     });
 
-    svgEl.appendChild(mainGroup);
+    svgContainer.appendChild(mainGroup);
 
     // Update viewBox
     const totalHeight = y + fontSize + 20;
-    svgEl.setAttribute('viewBox', `0 0 600 ${Math.max(200, totalHeight)}`);
+    svgContainer.setAttribute('viewBox', `0 0 600 ${Math.max(200, totalHeight)}`);
   }
 
   // ── Sliders ─────────────────────────────────
@@ -852,9 +918,9 @@
   // ── Save / Share ────────────────────────────
   function initActions() {
     document.getElementById('save-btn').addEventListener('click', () => {
-      const svgEl = document.getElementById('preview-svg');
+      const previewSvg = document.getElementById('preview-svg');
       // Clone and clean animation styles for clean export
-      const clone = svgEl.cloneNode(true);
+      const clone = previewSvg.cloneNode(true);
       clone.querySelectorAll('.draw-path').forEach(p => {
         p.style.animation = 'none';
         p.style.strokeDasharray = 'none';
@@ -873,8 +939,8 @@
     });
 
     document.getElementById('share-btn').addEventListener('click', async () => {
-      const svgEl = document.getElementById('preview-svg');
-      const clone = svgEl.cloneNode(true);
+      const previewSvg = document.getElementById('preview-svg');
+      const clone = previewSvg.cloneNode(true);
       clone.querySelectorAll('.draw-path').forEach(p => {
         p.style.animation = 'none';
         p.style.strokeDasharray = 'none';
@@ -967,7 +1033,12 @@
   // ── Init ────────────────────────────────────
   function init() {
     // Start loading fonts in background (non-blocking)
-    loadFonts();
+    // Wait for both opentype.js fonts AND Google Fonts to be ready
+    const fontsReady = typeof document.fonts !== 'undefined'
+      ? document.fonts.ready
+      : Promise.resolve();
+
+    fontsReady.then(() => loadFonts());
 
     initWelcome();
     buildStylePicker();
