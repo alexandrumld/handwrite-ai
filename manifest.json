@@ -1,20 +1,16 @@
 {
-  "short_name": "HandWrite",
   "name": "HandWrite AI",
-  "icons": [
-    {
-      "src": "icon.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "icon-large.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ],
+  "short_name": "HandWrite",
+  "description": "Realistic handwriting generator powered by in-browser RNN",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#FAFAF8",
-  "theme_color": "#3D5AFE"
+  "theme_color": "#FAFAF8",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✍️</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
 }

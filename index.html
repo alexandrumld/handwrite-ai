@@ -2,49 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#FAFAF8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="HandWrite">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
   <title>HandWrite AI</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <noscript><div style="padding:40px;text-align:center;font-family:sans-serif">HandWrite AI requires JavaScript to run.</div></noscript>
+  
   <div id="app">
-    <!-- Header -->
-    <header>
-      <h1>HandWrite AI</h1>
-      <p>Customize and generate realistic handwriting.</p>
+    <header id="app-header">
+      <span id="header-text">HandWrite AI</span>
     </header>
-
-    <!-- Controls -->
-    <section>
-      <textarea id="text-input" placeholder="Enter text here" maxlength="50"></textarea>
-      <label for="speed-slider">Speed</label>
-      <input type="range" id="speed-slider" min="0.6" max="9.5" value="2.5" step="0.1">
-      <label for="bias-slider">Neatness</label>
-      <input type="range" id="bias-slider" min="0.15" max="2.5" value="0.8" step="0.02">
-      <label for="width-slider">Stroke Width</label>
-      <input type="range" id="width-slider" min="0.1" max="1.5" value="0.75" step="0.02">
-
-      <select id="select-style">
-        <option value="-">Random Style</option>
-        <option value="0">Style 1</option>
-        <option value="1">Style 2</option>
-        <option value="2">Style 3</option>
-        <option value="3">Style 4</option>
-        <option value="4">Style 5</option>
-        <option value="5">Style 6</option>
-      </select>
-
-      <button id="draw-button" disabled>Loading...</button>
-    </section>
-
-    <!-- SVG Display -->
-    <div id="canvas-container">
-      <svg id="canvas"></svg>
-    </div>
+    
+    <main>
+      <div id="canvas-container">
+        <svg id="canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="loading-indicator">Loading model...</div>
+      </div>
+      
+      <section class="section">
+        <div class="input-wrapper">
+          <input type="text" id="text-input" placeholder="Type what you want to write..." maxlength="50" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <span id="char-count">0/50</span>
+        </div>
+      </section>
+      
+      <button id="draw-button" class="write-btn" disabled>Loading model...</button>
+      
+      <section class="section controls-section">
+        <div class="control-row">
+          <div class="control-group">
+            <label>Speed</label>
+            <input type="range" id="speed-slider" min="0.6" max="9.51" value="2.49" step="0.1">
+          </div>
+          <div class="control-group">
+            <label>Neatness</label>
+            <input type="range" id="bias-slider" min="0.15" max="2.5" value="0.75" step="0.02">
+          </div>
+          <div class="control-group">
+            <label>Width</label>
+            <input type="range" id="width-slider" min="0.1" max="1.5" value="0.75" step="0.02">
+          </div>
+        </div>
+        <div class="control-row">
+          <div class="control-group">
+            <label>Style</label>
+            <select id="select-style">
+              <option value="-">Random</option>
+              <option value="44">1</option>
+              <option value="54">2</option>
+              <option value="23">3</option>
+              <option value="1">4</option>
+              <option value="19">5</option>
+              <option value="6">6</option>
+              <option value="30">7</option>
+              <option value="11">8</option>
+              <option value="21">9</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      
+      <section class="section paper-section">
+        <div class="paper-options">
+          <button class="paper-btn active" data-paper="blank">Blank</button>
+          <button class="paper-btn" data-paper="lined">Lined</button>
+          <button class="paper-btn" data-paper="grid">Grid</button>
+          <button class="paper-btn" data-paper="dotted">Dotted</button>
+        </div>
+      </section>
+      
+      <section class="section actions-section" id="actions-section" style="display:none">
+        <button class="action-btn" id="save-button">Save SVG</button>
+        <button class="action-btn" id="share-btn">Share</button>
+      </section>
+    </main>
+    
+    <footer>
+      <p>HandWrite AI</p>
+    </footer>
   </div>
-
-  <script src="rnn.js"></script>
+  
+  <script src="engine.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
