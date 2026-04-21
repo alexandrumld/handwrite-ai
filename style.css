@@ -1,5 +1,6 @@
 /* ============================================
-   HandWrite AI v2 — Warm, Paper-like Design
+   HandWrite AI v2.1 — Warm, Paper-like Design
+   Real SVG stroke rendering
    ============================================ */
 
 *, *::before, *::after {
@@ -17,6 +18,8 @@
   --text-primary: #1A1A1A;
   --text-secondary: #888888;
   --border: #E8E6E2;
+  --ink: #1A1A1A;
+  --ink-light: #444;
   --radius: 12px;
   --radius-sm: 8px;
   --transition: 0.2s ease;
@@ -58,7 +61,7 @@ body {
 }
 
 #welcome-svg {
-  width: 340px;
+  width: 380px;
   height: auto;
   position: absolute;
   top: 50%;
@@ -71,25 +74,54 @@ body {
   top: 0;
   left: 50%;
   transform: translate(-50%, 0) scale(0.5);
-  width: 170px;
+  width: 190px;
 }
 
-#welcome-text {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 52px;
-  fill: var(--text-primary);
-  stroke: var(--text-primary);
-  stroke-width: 1;
-  stroke-dasharray: 2000;
-  stroke-dashoffset: 2000;
-  animation: drawText 1.5s ease forwards;
+/* Stroke drawing animation for welcome paths */
+#welcome-svg .stroke-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: var(--path-len, 800);
+  stroke-dashoffset: var(--path-len, 800);
+  animation: drawStroke 1.6s ease forwards;
 }
 
-@keyframes drawText {
+#welcome-svg .stroke-thin {
+  stroke: var(--ink);
+  opacity: 0.3;
+}
+
+#welcome-svg .stroke-medium {
+  stroke: var(--ink);
+  opacity: 0.5;
+}
+
+#welcome-svg .stroke-main {
+  stroke: var(--ink);
+  opacity: 0.85;
+}
+
+/* Staggered animation delays per letter group */
+#welcome-svg .stroke-path:nth-child(1) { animation-delay: 0s; }
+#welcome-svg .stroke-path:nth-child(2) { animation-delay: 0.08s; }
+#welcome-svg .stroke-path:nth-child(3) { animation-delay: 0.16s; }
+#welcome-svg .stroke-path:nth-child(4) { animation-delay: 0.24s; }
+#welcome-svg .stroke-path:nth-child(5) { animation-delay: 0.32s; }
+#welcome-svg .stroke-path:nth-child(6) { animation-delay: 0.40s; }
+#welcome-svg .stroke-path:nth-child(7) { animation-delay: 0.48s; }
+#welcome-svg .stroke-path:nth-child(8) { animation-delay: 0.56s; }
+#welcome-svg .stroke-path:nth-child(9) { animation-delay: 0.64s; }
+#welcome-svg .stroke-path:nth-child(10) { animation-delay: 0.72s; }
+#welcome-svg .stroke-path:nth-child(11) { animation-delay: 0.80s; }
+#welcome-svg .stroke-path:nth-child(12) { animation-delay: 0.88s; }
+#welcome-svg .stroke-path:nth-child(13) { animation-delay: 0.96s; }
+#welcome-svg .stroke-path:nth-child(14) { animation-delay: 1.04s; }
+
+@keyframes drawStroke {
   to {
     stroke-dashoffset: 0;
-    fill: var(--text-primary);
   }
 }
 
@@ -114,15 +146,15 @@ body {
 }
 
 #header-svg {
-  width: 160px;
+  width: 180px;
   height: auto;
 }
 
-#header-text {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 28px;
-  fill: var(--text-primary);
+#header-svg path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ============================================
@@ -478,6 +510,46 @@ input[type="range"]::-moz-range-thumb {
   padding: 20px;
 }
 
+#preview-svg path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Pen writing animation */
+@keyframes penWrite {
+  0%, 100% { transform: translateX(0) rotate(-30deg); }
+  25% { transform: translateX(8px) rotate(-25deg); }
+  50% { transform: translateX(4px) rotate(-35deg); }
+  75% { transform: translateX(10px) rotate(-28deg); }
+}
+
+.pen-anim {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  font-size: 28px;
+  animation: penWrite 0.8s ease infinite;
+  transform-origin: bottom right;
+  opacity: 0.5;
+}
+
+/* Preview drawing animation */
+@keyframes previewDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+#preview-svg .draw-path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: var(--path-len, 200);
+  stroke-dashoffset: var(--path-len, 200);
+  animation: previewDraw var(--draw-dur, 0.4s) ease forwards;
+}
+
 .preview-actions {
   display: flex;
   gap: 10px;
@@ -512,24 +584,6 @@ input[type="range"]::-moz-range-thumb {
 
 .action-btn:first-child:active {
   background: rgba(61, 90, 254, 0.08);
-}
-
-/* Pen writing animation */
-@keyframes penWrite {
-  0%, 100% { transform: translateX(0) rotate(-30deg); }
-  25% { transform: translateX(8px) rotate(-25deg); }
-  50% { transform: translateX(4px) rotate(-35deg); }
-  75% { transform: translateX(10px) rotate(-28deg); }
-}
-
-.pen-anim {
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  font-size: 28px;
-  animation: penWrite 0.8s ease infinite;
-  transform-origin: bottom right;
-  opacity: 0.5;
 }
 
 /* ============================================
@@ -587,11 +641,7 @@ input[type="range"]::-moz-range-thumb {
   }
 
   #welcome-svg {
-    width: 280px;
-  }
-
-  #welcome-text {
-    font-size: 42px;
+    width: 300px;
   }
 }
 
